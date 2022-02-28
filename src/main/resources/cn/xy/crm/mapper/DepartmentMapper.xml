@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.xy.crm.mapper.DepartmentMapper">
+  <resultMap id="BaseResultMap" type="cn.xy.crm.domain.Department">
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="sn" jdbcType="VARCHAR" property="sn" />
+    <result column="name" jdbcType="VARCHAR" property="name" />
+    <result column="name" property="text"/>
+    <result column="state" jdbcType="BIT" property="state" />
+    <association columnPrefix="manager_" javaType="cn.xy.crm.domain.Employee" property="manager">
+      <id column="id" property="id" />
+      <result column="name" property="username" />
+    </association>
+    <association columnPrefix="parent_" javaType="cn.xy.crm.domain.Department" property="parent">
+      <id column="id" property="id" />
+      <result column="sn" property="sn" />
+      <result column="name" property="name" />
+      <result column="name" property="text" />
+    </association>
+    <collection column="id" ofType="cn.xy.crm.domain.Department" property="children"
+                select="cn.xy.crm.mapper.DepartmentMapper.seletByPid">
+    </collection>
+  </resultMap>
+
+  <resultMap id="ListResultMap" type="Department">
+    <id column="id" property="id" jdbcType="BIGINT" />
+    <result column="name" property="name" jdbcType="VARCHAR" />
+  </resultMap>
+
+  <sql id="condition_sql">
+    <where>
+      <if test="state !=null ">
+        and d.state = #{state}
+      </if>
+        <if test="keyword != null and keyword != ''">
+          and d.sn like concat("%", #{keyword}, "%") or d.name like concat("%", #{keyword}, "%")
+        </if>
+    </where>
+  </sql>
+  <update id="deleteByPrimaryKey" parameterType="java.lang.Long">
+    update department set state = 0 where id= #{id}
+  </update>
+  <insert id="insert" keyProperty="id" parameterType="cn.xy.crm.domain.Department" useGeneratedKeys="true">
+    insert into department (sn, name, manager_id, parent_id, state)
+    values (#{sn,jdbcType=VARCHAR}, #{name,jdbcType=VARCHAR}, #{manager.id,jdbcType=BIGINT},
+      #{parent.id,jdbcType=BIGINT}, #{state,jdbcType=BIT})
+  </insert>
+  <update id="updateByPrimaryKey" parameterType="cn.xy.crm.domain.Department">
+    update department
+    set sn = #{sn,jdbcType=VARCHAR},
+      name = #{name,jdbcType=VARCHAR},
+      manager_id = #{manager.id,jdbcType=BIGINT},
+      parent_id = #{parent.id,jdbcType=BIGINT},
+      state = #{state,jdbcType=BIT}
+    where id = #{id,jdbcType=BIGINT}
+  </update>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    select id, sn, name, manager_id, parent_id, state from department where id = #{id,jdbcType=BIGINT}
+  </select>
+  <select id="selectAll" resultMap="BaseResultMap">
+    select id, sn, name, manager_id, parent_id, state from department
+  </select>
+  <select id="queryCount" resultType="java.lang.Long">
+    select count(*) from department d <include refid="condition_sql" />
+  </select>
+  <select id="queryPage" resultMap="BaseResultMap">
+    select d.id,d.name,d.sn,d.state,
+    manager.id as manager_id, manager.username as manager_name,
+    parent.id as parent_id, parent.sn as parent_sn, parent.name as parent_name
+    from department d left join employee as manager on d.manager_id = manager.id
+    left join department as parent on d.parent_id = parent.id
+    <include refid="condition_sql" />
+    <if test="page != null">
+      limit #{start}, #{rows}
+    </if>
+  </select>
+  <select id="selectRoot" resultMap="BaseResultMap">
+     select id,name, sn,parent_id from department where parent_id is null
+  </select>
+  <select id="seletByPid" resultMap="BaseResultMap">
+    select id, sn,name,parent_id from department where parent_id = #{id}
+  </select>
+  <select id="getByMid" resultMap="ListResultMap">
+    select  id, name from department WHERE manager_id=#{id}
+  </select>
+</mapper>
